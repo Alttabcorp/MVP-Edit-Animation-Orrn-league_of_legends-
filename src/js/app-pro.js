@@ -201,6 +201,23 @@ class OrnnStudioPro {
             }
         });
         
+        // Formatos de Redes Sociais
+        document.getElementById('btnFormat16x9')?.addEventListener('click', () => {
+            this.setViewportFormat('16:9');
+        });
+        
+        document.getElementById('btnFormat9x16')?.addEventListener('click', () => {
+            this.setViewportFormat('9:16');
+        });
+        
+        document.getElementById('btnFormat1x1')?.addEventListener('click', () => {
+            this.setViewportFormat('1:1');
+        });
+        
+        document.getElementById('btnFormatFree')?.addEventListener('click', () => {
+            this.setViewportFormat('free');
+        });
+        
         // Fullscreen
         document.getElementById('btnFullscreen')?.addEventListener('click', () => {
             const viewport = document.querySelector('.viewport-container');
@@ -214,6 +231,93 @@ class OrnnStudioPro {
         });
         
         console.log('✅ Controles de viewport configurados');
+    }
+    
+    setViewportFormat(format) {
+        const viewportContainer = document.querySelector('.viewport-container');
+        const viewport3D = document.getElementById('viewport3D');
+        
+        if (!viewportContainer || !viewport3D) return;
+        
+        // Remover classe ativa de todos os botões de formato
+        document.querySelectorAll('#btnFormat16x9, #btnFormat9x16, #btnFormat1x1, #btnFormatFree').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Remover classes de formato anteriores
+        viewportContainer.classList.remove('format-16x9', 'format-9x16', 'format-1x1', 'format-free');
+        
+        let width, height, aspectRatio;
+        
+        switch(format) {
+            case '16:9':
+                // Formato horizontal (YouTube, TV)
+                aspectRatio = 16 / 9;
+                viewportContainer.classList.add('format-16x9');
+                document.getElementById('btnFormat16x9')?.classList.add('active');
+                
+                // Centralizar e ajustar tamanho
+                const containerWidth = viewportContainer.parentElement.offsetWidth;
+                width = Math.min(containerWidth * 0.9, 1280);
+                height = width / aspectRatio;
+                break;
+                
+            case '9:16':
+                // Formato vertical (Stories, Reels, TikTok)
+                aspectRatio = 9 / 16;
+                viewportContainer.classList.add('format-9x16');
+                document.getElementById('btnFormat9x16')?.classList.add('active');
+                
+                const containerHeight = viewportContainer.parentElement.offsetHeight;
+                height = Math.min(containerHeight * 0.9, 720);
+                width = height * aspectRatio;
+                break;
+                
+            case '1:1':
+                // Formato quadrado (Instagram feed)
+                aspectRatio = 1;
+                viewportContainer.classList.add('format-1x1');
+                document.getElementById('btnFormat1x1')?.classList.add('active');
+                
+                const containerSize = Math.min(
+                    viewportContainer.parentElement.offsetWidth,
+                    viewportContainer.parentElement.offsetHeight
+                );
+                width = height = Math.min(containerSize * 0.8, 720);
+                break;
+                
+            case 'free':
+            default:
+                // Formato livre (padrão)
+                viewportContainer.classList.add('format-free');
+                document.getElementById('btnFormatFree')?.classList.add('active');
+                viewport3D.style.width = '';
+                viewport3D.style.height = '';
+                viewport3D.style.margin = '';
+                
+                // Redimensionar renderizador
+                if (this.animationSystem) {
+                    this.animationSystem.resizeRenderer();
+                }
+                return;
+        }
+        
+        // Aplicar dimensões
+        viewport3D.style.width = `${width}px`;
+        viewport3D.style.height = `${height}px`;
+        viewport3D.style.margin = 'auto';
+        
+        // Mostrar botão de formato livre quando algum formato específico está ativo
+        document.getElementById('btnFormatFree').style.display = 'block';
+        
+        // Redimensionar renderizador Three.js
+        if (this.animationSystem) {
+            setTimeout(() => {
+                this.animationSystem.resizeRenderer();
+            }, 100);
+        }
+        
+        console.log(`📱 Formato alterado para ${format}`);
     }
     
     setupHeaderButtons() {
