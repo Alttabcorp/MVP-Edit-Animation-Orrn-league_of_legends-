@@ -405,6 +405,18 @@ class AnimationSystem {
             this.currentAction.timeScale = this.animationSpeed;
         }
     }
+
+    pauseAnimation() {
+        if (this.currentAction) {
+            this.currentAction.paused = true;
+        }
+    }
+
+    resumeAnimation() {
+        if (this.currentAction) {
+            this.currentAction.paused = false;
+        }
+    }
     
     setTransitionDuration(duration) {
         this.transitionDuration = Math.max(0.05, Math.min(2.0, duration));

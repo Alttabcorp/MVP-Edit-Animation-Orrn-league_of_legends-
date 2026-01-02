@@ -229,8 +229,57 @@ class OrnnStudioPro {
                 }
             }
         });
+
+        // Fullscreen Controls
+        this.setupFullscreenControls();
         
         console.log('✅ Controles de viewport configurados');
+    }
+
+    setupFullscreenControls() {
+        this.isPlaying = true;
+        this.playbackSpeed = 1.0;
+
+        // Play/Pause
+        const fsPlayPause = document.getElementById('fsPlayPause');
+        fsPlayPause?.addEventListener('click', () => {
+            this.isPlaying = !this.isPlaying;
+            
+            if (this.animationSystem) {
+                if (this.isPlaying) {
+                    this.animationSystem.resumeAnimation();
+                    fsPlayPause.textContent = '⏸';
+                } else {
+                    this.animationSystem.pauseAnimation();
+                    fsPlayPause.textContent = '▶';
+                }
+            }
+        });
+
+        // Speed Up
+        const fsSpeedUp = document.getElementById('fsSpeedUp');
+        fsSpeedUp?.addEventListener('click', () => {
+            this.playbackSpeed = Math.min(this.playbackSpeed + 0.25, 3.0);
+            this.updatePlaybackSpeed();
+        });
+
+        // Speed Down
+        const fsSpeedDown = document.getElementById('fsSpeedDown');
+        fsSpeedDown?.addEventListener('click', () => {
+            this.playbackSpeed = Math.max(this.playbackSpeed - 0.25, 0.25);
+            this.updatePlaybackSpeed();
+        });
+    }
+
+    updatePlaybackSpeed() {
+        const fsSpeedValue = document.getElementById('fsSpeedValue');
+        if (fsSpeedValue) {
+            fsSpeedValue.textContent = `${this.playbackSpeed.toFixed(2)}x`;
+        }
+
+        if (this.animationSystem) {
+            this.animationSystem.setAnimationSpeed(this.playbackSpeed);
+        }
     }
     
     setViewportFormat(format) {
