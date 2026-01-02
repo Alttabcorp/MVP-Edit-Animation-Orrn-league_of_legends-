@@ -632,6 +632,88 @@ class AnimationSystem {
     processTransitionQueue() {
         // Processamento já feito no playSequence
     }
+
+    // Gerenciamento de Background
+    setBackgroundColor(color) {
+        if (this.backgroundVideo) {
+            this.backgroundVideo.pause();
+            this.backgroundVideo = null;
+        }
+        if (this.backgroundTexture) {
+            this.backgroundTexture.dispose();
+            this.backgroundTexture = null;
+        }
+        this.scene.background = new this.THREE.Color(color);
+    }
+
+    setBackgroundImage(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const loader = new this.THREE.TextureLoader();
+                loader.load(e.target.result, (texture) => {
+                    if (this.backgroundVideo) {
+                        this.backgroundVideo.pause();
+                        this.backgroundVideo = null;
+                    }
+                    if (this.backgroundTexture) {
+                        this.backgroundTexture.dispose();
+                    }
+                    this.backgroundTexture = texture;
+                    this.scene.background = texture;
+                    resolve();
+                }, undefined, reject);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    setBackgroundVideo(file) {
+        return new Promise((resolve, reject) => {
+            try {
+                if (this.backgroundVideo) {
+                    this.backgroundVideo.pause();
+                }
+                if (this.backgroundTexture) {
+                    this.backgroundTexture.dispose();
+                }
+
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(file);
+                video.loop = true;
+                video.muted = true;
+                video.playsInline = true;
+                
+                video.addEventListener('loadeddata', () => {
+                    video.play();
+                    const videoTexture = new this.THREE.VideoTexture(video);
+                    videoTexture.minFilter = this.THREE.LinearFilter;
+                    videoTexture.magFilter = this.THREE.LinearFilter;
+                    
+                    this.backgroundVideo = video;
+                    this.backgroundTexture = videoTexture;
+                    this.scene.background = videoTexture;
+                    resolve();
+                });
+
+                video.addEventListener('error', reject);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    removeBackground() {
+        if (this.backgroundVideo) {
+            this.backgroundVideo.pause();
+            this.backgroundVideo = null;
+        }
+        if (this.backgroundTexture) {
+            this.backgroundTexture.dispose();
+            this.backgroundTexture = null;
+        }
+        this.scene.background = new this.THREE.Color(0x0f0f1e);
+    }
 }
 
 // Exportar para uso global

@@ -189,6 +189,45 @@
                 </div>
             </div>
 
+            <!-- Background Settings -->
+            <div class="panel-section">
+                <h3>🖼️ Fundo do Viewport</h3>
+                
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Tipo de Fundo</span>
+                    </div>
+                    <select id="backgroundTypeSelect" style="width: 100%; padding: 8px; background: var(--timeline-track); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px;">
+                        <option value="color">Cor Sólida</option>
+                        <option value="image">Imagem</option>
+                        <option value="video">Vídeo</option>
+                    </select>
+                </div>
+
+                <div class="control-group" id="colorPickerGroup">
+                    <div class="control-label">
+                        <span>Cor do Fundo</span>
+                    </div>
+                    <input type="color" id="backgroundColorPicker" value="#0f0f1e" style="width: 100%; height: 40px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">
+                </div>
+
+                <div class="control-group" id="imageUploadGroup" style="display: none;">
+                    <div class="control-label">
+                        <span>Imagem de Fundo</span>
+                    </div>
+                    <input type="file" id="backgroundImageInput" accept="image/*" style="width: 100%; padding: 8px; background: var(--timeline-track); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; cursor: pointer;">
+                    <button id="removeBackgroundImage" style="width: 100%; margin-top: 8px; padding: 8px; background: var(--bg-hover); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; display: none;">Remover Imagem</button>
+                </div>
+
+                <div class="control-group" id="videoUploadGroup" style="display: none;">
+                    <div class="control-label">
+                        <span>Vídeo de Fundo</span>
+                    </div>
+                    <input type="file" id="backgroundVideoInput" accept="video/*" style="width: 100%; padding: 8px; background: var(--timeline-track); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; cursor: pointer;">
+                    <button id="removeBackgroundVideo" style="width: 100%; margin-top: 8px; padding: 8px; background: var(--bg-hover); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; display: none;">Remover Vídeo</button>
+                </div>
+            </div>
+
             <!-- Export Settings -->
             <div class="panel-section">
                 <h3>⬇️ Configurações de Export</h3>

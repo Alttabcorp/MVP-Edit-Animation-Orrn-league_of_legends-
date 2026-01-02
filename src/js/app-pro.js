@@ -36,6 +36,7 @@ class OrnnStudioPro {
         this.setupHeaderButtons();
         this.setupVisualOptions();
         this.setupModelParts();
+        this.setupBackgroundControls();
         this.setupAnimationLibrary();
         this.loadAllAnimations();
         
@@ -160,6 +161,90 @@ class OrnnStudioPro {
         }
         
         console.log('✅ Controles de câmera configurados');
+    }
+
+    setupBackgroundControls() {
+        const backgroundTypeSelect = document.getElementById('backgroundTypeSelect');
+        const colorPickerGroup = document.getElementById('colorPickerGroup');
+        const imageUploadGroup = document.getElementById('imageUploadGroup');
+        const videoUploadGroup = document.getElementById('videoUploadGroup');
+        const backgroundColorPicker = document.getElementById('backgroundColorPicker');
+        const backgroundImageInput = document.getElementById('backgroundImageInput');
+        const backgroundVideoInput = document.getElementById('backgroundVideoInput');
+        const removeBackgroundImage = document.getElementById('removeBackgroundImage');
+        const removeBackgroundVideo = document.getElementById('removeBackgroundVideo');
+
+        // Trocar tipo de fundo
+        backgroundTypeSelect?.addEventListener('change', (e) => {
+            const type = e.target.value;
+            
+            colorPickerGroup.style.display = type === 'color' ? 'block' : 'none';
+            imageUploadGroup.style.display = type === 'image' ? 'block' : 'none';
+            videoUploadGroup.style.display = type === 'video' ? 'block' : 'none';
+
+            if (type === 'color' && this.animationSystem) {
+                this.animationSystem.setBackgroundColor(backgroundColorPicker.value);
+            }
+        });
+
+        // Seletor de cor
+        backgroundColorPicker?.addEventListener('input', (e) => {
+            if (this.animationSystem) {
+                this.animationSystem.setBackgroundColor(e.target.value);
+            }
+        });
+
+        // Upload de imagem
+        backgroundImageInput?.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file && this.animationSystem) {
+                try {
+                    await this.animationSystem.setBackgroundImage(file);
+                    removeBackgroundImage.style.display = 'block';
+                    console.log('✅ Imagem de fundo carregada');
+                } catch (error) {
+                    console.error('❌ Erro ao carregar imagem:', error);
+                    alert('Erro ao carregar imagem de fundo');
+                }
+            }
+        });
+
+        // Upload de vídeo
+        backgroundVideoInput?.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file && this.animationSystem) {
+                try {
+                    await this.animationSystem.setBackgroundVideo(file);
+                    removeBackgroundVideo.style.display = 'block';
+                    console.log('✅ Vídeo de fundo carregado');
+                } catch (error) {
+                    console.error('❌ Erro ao carregar vídeo:', error);
+                    alert('Erro ao carregar vídeo de fundo');
+                }
+            }
+        });
+
+        // Remover imagem
+        removeBackgroundImage?.addEventListener('click', () => {
+            if (this.animationSystem) {
+                this.animationSystem.removeBackground();
+                backgroundImageInput.value = '';
+                removeBackgroundImage.style.display = 'none';
+                console.log('🗑️ Imagem de fundo removida');
+            }
+        });
+
+        // Remover vídeo
+        removeBackgroundVideo?.addEventListener('click', () => {
+            if (this.animationSystem) {
+                this.animationSystem.removeBackground();
+                backgroundVideoInput.value = '';
+                removeBackgroundVideo.style.display = 'none';
+                console.log('🗑️ Vídeo de fundo removido');
+            }
+        });
+
+        console.log('✅ Controles de fundo configurados');
     }
     
     setupViewportControls() {
