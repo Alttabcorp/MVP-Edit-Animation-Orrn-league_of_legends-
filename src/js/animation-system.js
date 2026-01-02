@@ -115,10 +115,10 @@ class AnimationSystem {
             this.scene.add(fillLight);
             
             // Grid de fundo
-            const gridHelper = new THREE.GridHelper(200, 20, 0xff6b35, 0x444444);
-            gridHelper.material.opacity = 0.2;
-            gridHelper.material.transparent = true;
-            this.scene.add(gridHelper);
+            this.gridHelper = new THREE.GridHelper(200, 20, 0xff6b35, 0x444444);
+            this.gridHelper.material.opacity = 0.2;
+            this.gridHelper.material.transparent = true;
+            this.scene.add(this.gridHelper);
             
             // Carregar modelo Ornn
             const loader = new GLTFLoader();
