@@ -175,8 +175,8 @@ class AnimationSystem {
             // Bind eventos
             window.addEventListener('resize', () => this.resizeRenderer());
             
-            // Click no personagem para T-pose
-            this.renderer.domElement.addEventListener('click', (e) => {
+            // Duplo click no personagem para T-pose
+            this.renderer.domElement.addEventListener('dblclick', (e) => {
                 // Verificar se clicou no modelo (não nos controles)
                 if (e.target === this.renderer.domElement) {
                     // Buscar T-Pose por nome
