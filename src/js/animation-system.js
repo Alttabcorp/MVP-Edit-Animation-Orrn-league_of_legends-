@@ -94,8 +94,8 @@ class AnimationSystem {
             this.controls.target.set(0, 50, 0);
             
             // Limites de zoom otimizados
-            this.controls.minDistance = 80;
-            this.controls.maxDistance = 800;
+            this.controls.minDistance = 30;
+            this.controls.maxDistance = 1200;
             this.controls.minPolarAngle = 0;
             this.controls.maxPolarAngle = Math.PI;
             this.controls.zoomSpeed = 1.2;
