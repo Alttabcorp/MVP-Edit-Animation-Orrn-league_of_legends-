@@ -152,6 +152,13 @@ class AnimationSystem {
                 this.mixer = new THREE.AnimationMixer(this.model);
                 this.animations = gltf.animations;
                 
+                // Configurar o mixer para não acumular pesos
+                this.mixer.addEventListener('finished', (e) => {
+                    // Limpar ação quando terminar
+                    if (e.action && e.action.loop === this.THREE.LoopOnce) {
+                        e.action.fadeOut(0.5);
+                    }
+                });
                 
                 // Listar todas as animações disponíveis no console
                 this.animations.forEach((anim, index) => {
@@ -242,7 +249,7 @@ class AnimationSystem {
         
     }
     
-    changeAnimation(animationName) {
+    changeAnimation(animationName, startTime = 0) {
         if (!this.mixer || !this.animations.length) {
             console.warn('⚠️ Mixer ou animações não disponíveis');
             return false;
@@ -265,14 +272,30 @@ class AnimationSystem {
             newAction.setLoop(this.THREE.LoopRepeat);
         }
         
-        // Fazer transição suave
-        if (this.currentAction) {
+        // Fazer transição suave sem reset para evitar voltar à pose inicial
+        if (this.currentAction && this.currentAction !== newAction) {
+            // Reduzir peso gradualmente em vez de apenas fadeOut
             this.currentAction.fadeOut(this.transitionDuration);
+            this.currentAction.enabled = true; // Manter habilitada durante transição
         }
         
-        newAction.reset();
+        // Apenas resetar se a ação não estiver rodando ou se for forçado
+        if (!newAction.isRunning() || startTime > 0) {
+            newAction.reset();
+        }
+        
+        // Garantir que a nova ação está habilitada
+        newAction.enabled = true;
+        newAction.setEffectiveTimeScale(1);
+        newAction.setEffectiveWeight(1);
         newAction.fadeIn(this.transitionDuration);
         newAction.timeScale = this.animationSpeed;
+        
+        // Definir tempo inicial se especificado (para trim)
+        if (startTime > 0) {
+            newAction.time = startTime;
+        }
+        
         newAction.play();
         
         this.currentAction = newAction;
@@ -305,7 +328,21 @@ class AnimationSystem {
         return false;
     }
     
-    changeAnimationByIndex(index, forceStop = false) {
+    // Limpar todas as ações do mixer exceto a atual
+    cleanupUnusedActions() {
+        if (!this.mixer) return;
+        
+        const actions = this.mixer._actions;
+        if (actions) {
+            actions.forEach(action => {
+                if (action !== this.currentAction && action.isRunning() && action.getEffectiveWeight() < 0.01) {
+                    action.stop();
+                }
+            });
+        }
+    }
+    
+    changeAnimationByIndex(index, forceStop = false, startTime = 0) {
         if (!this.mixer || !this.animations.length) {
             console.warn('⚠️ Mixer ou animações não disponíveis');
             return false;
@@ -327,13 +364,27 @@ class AnimationSystem {
         // Fazer transição suave - NÃO chamar stop(), apenas fadeOut
         if (this.currentAction && this.currentAction !== newAction) {
             this.currentAction.fadeOut(this.transitionDuration);
+            this.currentAction.enabled = true; // Manter habilitada durante transição
             // Remover stop() para evitar voltar ao T-pose durante transição
         }
         
-        newAction.reset();
+        // Apenas resetar se a ação não estiver rodando ou se for forçado
+        if (!newAction.isRunning() || startTime > 0) {
+            newAction.reset();
+        }
+        
         newAction.setLoop(this.THREE.LoopRepeat);
+        newAction.enabled = true;
+        newAction.setEffectiveTimeScale(1);
+        newAction.setEffectiveWeight(1);
         newAction.fadeIn(this.transitionDuration);
         newAction.timeScale = this.animationSpeed;
+        
+        // Definir tempo inicial se especificado (para trim)
+        if (startTime > 0) {
+            newAction.time = startTime;
+        }
+        
         newAction.play();
         
         this.currentAction = newAction;
@@ -472,6 +523,11 @@ class AnimationSystem {
         if (this.mixer) {
             const clockDelta = this.clock.getDelta();
             this.mixer.update(clockDelta);
+            
+            // Limpar ações não utilizadas periodicamente (a cada 60 frames)
+            if (this.frameCount % 60 === 0) {
+                this.cleanupUnusedActions();
+            }
         }
         
         // Atualizar controles

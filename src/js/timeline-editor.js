@@ -9,6 +9,8 @@ export class TimelineEditor {
         this.pixelsPerSecond = 100;
         this.selectedClip = null;
         this.fps = 60;
+        this.clipboard = null; // Para copiar/colar clips
+        this.trimTooltip = null; // Tooltip para mostrar valores do trim
         
         this.tracks = {
             track1: document.getElementById('trackContent1'),
@@ -18,6 +20,7 @@ export class TimelineEditor {
         
         this.animationSystem = null;
         this.setupEventListeners();
+        this.createTrimTooltip();
         this.createTimeRuler();
         this.createPlayhead();
         
@@ -89,6 +92,15 @@ export class TimelineEditor {
             } else if (e.key === 'x' && this.selectedClip) {
                 e.preventDefault();
                 this.splitClip(this.selectedClip, this.currentTime);
+            } else if (e.key === 'c' && (e.ctrlKey || e.metaKey) && this.selectedClip) {
+                e.preventDefault();
+                this.copyClip(this.selectedClip);
+            } else if (e.key === 'v' && (e.ctrlKey || e.metaKey) && this.clipboard) {
+                e.preventDefault();
+                this.pasteClip();
+            } else if (e.key === 'd' && (e.ctrlKey || e.metaKey) && this.selectedClip) {
+                e.preventDefault();
+                this.duplicateClip(this.selectedClip);
             }
         });
     }
@@ -278,6 +290,9 @@ export class TimelineEditor {
             track: trackId,
             startTime: startTime,
             duration: duration,
+            originalDuration: duration, // Duração original da animação
+            trimStart: 0, // Início do corte (em segundos dentro da animação)
+            trimEnd: duration, // Fim do corte (em segundos dentro da animação)
             element: null
         };
         
@@ -338,6 +353,9 @@ export class TimelineEditor {
             track: trackId,
             startTime: startTime,
             duration: duration,
+            originalDuration: duration, // Duração original da animação
+            trimStart: 0, // Início do corte (em segundos dentro da animação)
+            trimEnd: duration, // Fim do corte (em segundos dentro da animação)
             element: null
         };
         
@@ -349,7 +367,7 @@ export class TimelineEditor {
         clipEl.style.left = `${startTime * this.pixelsPerSecond * this.zoom}px`;
         clipEl.style.width = `${duration * this.pixelsPerSecond * this.zoom}px`;
         
-        // Handles de resize
+        // Handles de posição (mover clip na timeline)
         const leftHandle = document.createElement('div');
         leftHandle.className = 'clip-handle left';
         clipEl.appendChild(leftHandle);
@@ -357,6 +375,36 @@ export class TimelineEditor {
         const rightHandle = document.createElement('div');
         rightHandle.className = 'clip-handle right';
         clipEl.appendChild(rightHandle);
+        
+        // Handles de trim (cortar início/fim da animação)
+        const trimStartHandle = document.createElement('div');
+        trimStartHandle.className = 'clip-trim-handle trim-start';
+        trimStartHandle.title = 'Arraste para cortar o início da animação';
+        clipEl.appendChild(trimStartHandle);
+        
+        const trimEndHandle = document.createElement('div');
+        trimEndHandle.className = 'clip-trim-handle trim-end';
+        trimEndHandle.title = 'Arraste para cortar o fim da animação';
+        clipEl.appendChild(trimEndHandle);
+        
+        // Área trimada visual
+        const trimStartOverlay = document.createElement('div');
+        trimStartOverlay.className = 'trim-overlay trim-start-overlay';
+        clipEl.appendChild(trimStartOverlay);
+        
+        const trimEndOverlay = document.createElement('div');
+        trimEndOverlay.className = 'trim-overlay trim-end-overlay';
+        clipEl.appendChild(trimEndOverlay);
+        
+        // Indicador de trim ativo
+        const trimIndicator = document.createElement('div');
+        trimIndicator.className = 'trim-indicator';
+        trimIndicator.innerHTML = '✂️';
+        trimIndicator.title = 'Este clip foi cortado';
+        trimIndicator.style.display = 'none';
+        clipEl.appendChild(trimIndicator);
+        
+        this.updateTrimVisuals(clip, clipEl);
         
         // Event listeners
         this.setupClipInteractions(clipEl, clip);
@@ -376,14 +424,18 @@ export class TimelineEditor {
     setupClipInteractions(clipEl, clip) {
         let isDragging = false;
         let isResizing = false;
+        let isTrimming = false;
         let resizeHandle = null;
+        let trimHandle = null;
         let startX = 0;
         let startLeft = 0;
         let startWidth = 0;
+        let startTrimStart = 0;
+        let startTrimEnd = 0;
         
         // Click para selecionar
         clipEl.addEventListener('click', (e) => {
-            if (!isDragging && !isResizing) {
+            if (!isDragging && !isResizing && !isTrimming) {
                 this.selectClip(clip);
             }
         });
@@ -393,7 +445,12 @@ export class TimelineEditor {
             if (e.target.classList.contains('clip-handle')) {
                 isResizing = true;
                 resizeHandle = e.target.classList.contains('left') ? 'left' : 'right';
-            } else {
+            } else if (e.target.classList.contains('clip-trim-handle')) {
+                isTrimming = true;
+                trimHandle = e.target.classList.contains('trim-start') ? 'start' : 'end';
+                startTrimStart = clip.trimStart;
+                startTrimEnd = clip.trimEnd;
+            } else if (!e.target.classList.contains('trim-overlay')) {
                 isDragging = true;
             }
             
@@ -427,17 +484,58 @@ export class TimelineEditor {
                         clip.duration = newWidth / (this.pixelsPerSecond * this.zoom);
                     }
                 }
+            } else if (isTrimming) {
+                const deltaX = e.clientX - startX;
+                const deltaTime = deltaX / (this.pixelsPerSecond * this.zoom);
+                
+                if (trimHandle === 'start') {
+                    // Cortar início: ajustar trimStart
+                    const newTrimStart = Math.max(0, Math.min(clip.originalDuration - 0.1, startTrimStart + deltaTime));
+                    if (newTrimStart < clip.trimEnd - 0.1) {
+                        clip.trimStart = newTrimStart;
+                        clip.duration = clip.trimEnd - clip.trimStart;
+                        this.updateTrimVisuals(clip, clipEl);
+                        
+                        // Mostrar tooltip com valores
+                        this.showTrimTooltip(e.clientX, e.clientY, clip, 'start');
+                        
+                        // Preview em tempo real no modelo
+                        this.previewTrim(clip);
+                    }
+                } else if (trimHandle === 'end') {
+                    // Cortar fim: ajustar trimEnd
+                    const newTrimEnd = Math.max(0.1, Math.min(clip.originalDuration, startTrimEnd + deltaTime));
+                    if (newTrimEnd > clip.trimStart + 0.1) {
+                        clip.trimEnd = newTrimEnd;
+                        clip.duration = clip.trimEnd - clip.trimStart;
+                        this.updateTrimVisuals(clip, clipEl);
+                        
+                        // Mostrar tooltip com valores
+                        this.showTrimTooltip(e.clientX, e.clientY, clip, 'end');
+                        
+                        // Preview em tempo real no modelo
+                        this.previewTrim(clip);
+                    }
+                }
             }
         });
         
         document.addEventListener('mouseup', () => {
-            if (isDragging || isResizing) {
+            if (isDragging || isResizing || isTrimming) {
                 this.updateDuration();
                 this.sortClips();
             }
+            
+            // Esconder tooltip de trim
+            if (isTrimming) {
+                this.hideTrimTooltip();
+            }
+            
             isDragging = false;
             isResizing = false;
+            isTrimming = false;
             resizeHandle = null;
+            trimHandle = null;
         });
         
         // Delete com tecla Delete
@@ -597,14 +695,18 @@ export class TimelineEditor {
         );
         
         if (activeClip && this.animationSystem) {
+            // Calcular o tempo local dentro do clip (considerando trim)
+            const localTime = this.currentTime - activeClip.startTime;
+            const animationTime = activeClip.trimStart + localTime;
+            
             // Verificar se precisamos trocar animação
             if (!this.lastPlayedClip || this.lastPlayedClip.id !== activeClip.id) {
                 
                 // Se tem índice, usar por índice, senão usar por nome
                 if (activeClip.animationIndex !== undefined) {
-                    this.animationSystem.changeAnimationByIndex(activeClip.animationIndex);
+                    this.animationSystem.changeAnimationByIndex(activeClip.animationIndex, animationTime);
                 } else {
-                    this.animationSystem.changeAnimation(activeClip.animation);
+                    this.animationSystem.changeAnimation(activeClip.animation, animationTime);
                 }
                 
                 this.lastPlayedClip = activeClip;
@@ -672,8 +774,50 @@ export class TimelineEditor {
             if (clip.element) {
                 clip.element.style.left = `${clip.startTime * this.pixelsPerSecond * this.zoom}px`;
                 clip.element.style.width = `${clip.duration * this.pixelsPerSecond * this.zoom}px`;
+                this.updateTrimVisuals(clip, clip.element);
             }
         });
+    }
+    
+    updateTrimVisuals(clip, clipEl) {
+        if (!clip || !clipEl) return;
+        
+        // Calcular porcentagens de trim
+        const trimStartPercent = (clip.trimStart / clip.originalDuration) * 100;
+        const trimEndPercent = ((clip.originalDuration - clip.trimEnd) / clip.originalDuration) * 100;
+        
+        // Verificar se há trim ativo
+        const hasTrim = clip.trimStart > 0 || clip.trimEnd < clip.originalDuration;
+        
+        // Atualizar overlays
+        const trimStartOverlay = clipEl.querySelector('.trim-start-overlay');
+        const trimEndOverlay = clipEl.querySelector('.trim-end-overlay');
+        
+        if (trimStartOverlay) {
+            trimStartOverlay.style.width = `${trimStartPercent}%`;
+        }
+        
+        if (trimEndOverlay) {
+            trimEndOverlay.style.width = `${trimEndPercent}%`;
+        }
+        
+        // Mostrar/esconder indicador de trim
+        const trimIndicator = clipEl.querySelector('.trim-indicator');
+        if (trimIndicator) {
+            trimIndicator.style.display = hasTrim ? 'flex' : 'none';
+        }
+        
+        // Posicionar handles de trim
+        const trimStartHandle = clipEl.querySelector('.trim-start');
+        const trimEndHandle = clipEl.querySelector('.trim-end');
+        
+        if (trimStartHandle) {
+            trimStartHandle.style.left = `${trimStartPercent}%`;
+        }
+        
+        if (trimEndHandle) {
+            trimEndHandle.style.right = `${trimEndPercent}%`;
+        }
     }
     
     clear() {
@@ -681,8 +825,161 @@ export class TimelineEditor {
         this.clips = [];
         this.currentTime = 0;
         this.selectedClip = null;
+        this.clipboard = null;
         this.updateDuration();
         this.updateClipCount();
+    }
+    
+    // Criar tooltip de trim
+    createTrimTooltip() {
+        this.trimTooltip = document.createElement('div');
+        this.trimTooltip.className = 'trim-tooltip';
+        this.trimTooltip.style.display = 'none';
+        document.body.appendChild(this.trimTooltip);
+    }
+    
+    // Mostrar tooltip com valores do trim
+    showTrimTooltip(x, y, clip, handle) {
+        if (!this.trimTooltip) return;
+        
+        const trimStartTime = this.formatTime(clip.trimStart, 2);
+        const trimEndTime = this.formatTime(clip.trimEnd, 2);
+        const durationTime = this.formatTime(clip.duration, 2);
+        
+        let content = '';
+        if (handle === 'start') {
+            content = `
+                <div style="font-weight: 600; margin-bottom: 4px;">✂️ Cortando Início</div>
+                <div>Início: <span style="color: #00d9ff;">${trimStartTime}</span></div>
+                <div>Fim: ${trimEndTime}</div>
+                <div>Duração: <span style="color: #00ff88;">${durationTime}</span></div>
+            `;
+        } else {
+            content = `
+                <div style="font-weight: 600; margin-bottom: 4px;">✂️ Cortando Fim</div>
+                <div>Início: ${trimStartTime}</div>
+                <div>Fim: <span style="color: #00d9ff;">${trimEndTime}</span></div>
+                <div>Duração: <span style="color: #00ff88;">${durationTime}</span></div>
+            `;
+        }
+        
+        this.trimTooltip.innerHTML = content;
+        this.trimTooltip.style.display = 'block';
+        this.trimTooltip.style.left = `${x + 15}px`;
+        this.trimTooltip.style.top = `${y - 60}px`;
+    }
+    
+    // Esconder tooltip
+    hideTrimTooltip() {
+        if (this.trimTooltip) {
+            this.trimTooltip.style.display = 'none';
+        }
+    }
+    
+    // Preview em tempo real do trim
+    previewTrim(clip) {
+        if (!this.animationSystem || !clip) return;
+        
+        // Pausar timeline se estiver tocando
+        const wasPlaying = this.isPlaying;
+        if (wasPlaying) {
+            this.pause();
+        }
+        
+        // Mostrar o frame do trimStart
+        if (clip.animationIndex !== undefined) {
+            this.animationSystem.changeAnimationByIndex(clip.animationIndex, false, clip.trimStart);
+        } else {
+            this.animationSystem.changeAnimation(clip.animation, clip.trimStart);
+        }
+        
+        // Pausar a animação para mostrar o frame específico
+        setTimeout(() => {
+            if (this.animationSystem.currentAction) {
+                this.animationSystem.currentAction.paused = true;
+            }
+        }, 50);
+    }
+    
+    // Copiar clip
+    copyClip(clip) {
+        if (!clip) return;
+        
+        this.clipboard = {
+            animation: clip.animation,
+            animationIndex: clip.animationIndex,
+            duration: clip.duration,
+            originalDuration: clip.originalDuration,
+            trimStart: clip.trimStart,
+            trimEnd: clip.trimEnd
+        };
+        
+        // Feedback visual
+        if (clip.element) {
+            clip.element.style.animation = 'clipCopy 0.3s ease';
+            setTimeout(() => {
+                if (clip.element) {
+                    clip.element.style.animation = '';
+                }
+            }, 300);
+        }
+        
+        console.log('📋 Clip copiado:', clip.animation);
+    }
+    
+    // Colar clip
+    pasteClip() {
+        if (!this.clipboard) return;
+        
+        // Determinar onde colar (após o clip selecionado ou no cursor da timeline)
+        let startTime = this.currentTime;
+        let trackId = 'track1';
+        
+        if (this.selectedClip) {
+            startTime = this.selectedClip.startTime + this.selectedClip.duration;
+            trackId = this.selectedClip.track;
+        }
+        
+        // Criar novo clip com os dados copiados
+        let newClip;
+        if (this.clipboard.animationIndex !== undefined) {
+            newClip = this.addClipByIndex(
+                this.clipboard.animationIndex,
+                this.clipboard.animation,
+                this.clipboard.originalDuration,
+                trackId,
+                startTime
+            );
+        } else {
+            newClip = this.addClip(this.clipboard.animation, trackId, startTime);
+        }
+        
+        // Aplicar trim copiado
+        if (newClip) {
+            newClip.trimStart = this.clipboard.trimStart;
+            newClip.trimEnd = this.clipboard.trimEnd;
+            newClip.duration = this.clipboard.duration;
+            newClip.originalDuration = this.clipboard.originalDuration;
+            
+            // Atualizar visual
+            if (newClip.element) {
+                newClip.element.style.width = `${newClip.duration * this.pixelsPerSecond * this.zoom}px`;
+                this.updateTrimVisuals(newClip, newClip.element);
+            }
+            
+            this.selectClip(newClip);
+            this.updateDuration();
+        }
+        
+        console.log('📋 Clip colado:', this.clipboard.animation);
+    }
+    
+    // Duplicar clip (atalho para copiar e colar)
+    duplicateClip(clip) {
+        if (!clip) return;
+        
+        this.copyClip(clip);
+        this.pasteClip();
     }
     
     formatTime(seconds, decimals = 3) {
