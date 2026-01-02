@@ -6,7 +6,7 @@
 
 ## Galeria
 
-![Interface Principal](docs/screenshots/main-interface.png)
+![Interface Principal](docs/screenshots/main-interface.png.png)
 *Interface principal do editor*
 
 ![Viewport 3D](docs/screenshots/viewport.png)
