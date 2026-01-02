@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ornn Animation Studio</title>
+    <link rel="stylesheet" href="src/css/styles.css">
+    
+    <!-- Three.js Import Map -->
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🔥 Ornn Animation Studio</h1>
+            <p class="subtitle">Sistema de Animações 3D</p>
+        </header>
+
+        <!-- Viewport 3D -->
+        <div class="viewport-container">
+            <div id="viewport3D" class="viewport"></div>
+            <div class="viewport-overlay">
+                <div id="fpsCounter" class="fps-counter">FPS: 60</div>
+                <div class="viewport-info">
+                    <span id="currentAnimation">Idle</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Animation Controls -->
+        <div class="animation-panel">
+            <div class="panel-section">
+                <h3>🎭 Animações</h3>
+                <div class="animation-grid">
+                    <button class="anim-btn active" data-animation="idle">
+                        <span class="icon">🧘</span>
+                        <span class="label">Idle</span>
+                    </button>
+                    <button class="anim-btn" data-animation="dance">
+                        <span class="icon">💃</span>
+                        <span class="label">Dance</span>
+                    </button>
+                    <button class="anim-btn" data-animation="walk">
+                        <span class="icon">🚶</span>
+                        <span class="label">Walk</span>
+                    </button>
+                    <button class="anim-btn" data-animation="jump">
+                        <span class="icon">🦘</span>
+                        <span class="label">Jump</span>
+                    </button>
+                    <button class="anim-btn" data-animation="attack">
+                        <span class="icon">⚔️</span>
+                        <span class="label">Attack</span>
+                    </button>
+                    <button class="anim-btn" data-animation="spin">
+                        <span class="icon">🌀</span>
+                        <span class="label">Spin</span>
+                    </button>
+                    <button class="anim-btn" data-animation="celebrate">
+                        <span class="icon">🎉</span>
+                        <span class="label">Celebrate</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>⚡ Sequências Rápidas</h3>
+                <div class="sequence-buttons">
+                    <button class="sequence-btn" data-sequence="dance,jump,dance">
+                        <span class="seq-icon">🔥</span>
+                        <span class="seq-name">Energético</span>
+                    </button>
+                    <button class="sequence-btn" data-sequence="walk,spin,celebrate">
+                        <span class="seq-icon">✨</span>
+                        <span class="seq-name">Suave</span>
+                    </button>
+                    <button class="sequence-btn" data-sequence="jump,attack,spin">
+                        <span class="seq-icon">⚡</span>
+                        <span class="seq-name">Combate</span>
+                    </button>
+                    <button class="sequence-btn" data-sequence="random">
+                        <span class="seq-icon">🎲</span>
+                        <span class="seq-name">Aleatório</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>⚙️ Configurações</h3>
+                <div class="settings-group">
+                    <div class="setting-item">
+                        <label>
+                            <span class="setting-label">Velocidade</span>
+                            <div class="slider-container">
+                                <input type="range" id="speedSlider" min="0.1" max="3" step="0.1" value="1">
+                                <span class="slider-value" id="speedValue">1.0x</span>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label>
+                            <span class="setting-label">Transição</span>
+                            <div class="slider-container">
+                                <input type="range" id="transitionSlider" min="0.05" max="2" step="0.05" value="0.5">
+                                <span class="slider-value" id="transitionValue">0.5s</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="autoRotateCheck">
+                            <span>Rotação Automática da Câmera</span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showGridCheck" checked>
+                            <span>Mostrar Grid</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>🎮 Controles</h3>
+                <div class="controls-help">
+                    <div class="help-item">
+                        <span class="help-icon">🖱️</span>
+                        <span class="help-text">Clique no Ornn: Animação aleatória</span>
+                    </div>
+                    <div class="help-item">
+                        <span class="help-icon">↻</span>
+                        <span class="help-text">Arrastar: Rotacionar câmera</span>
+                    </div>
+                    <div class="help-item">
+                        <span class="help-icon">🔍</span>
+                        <span class="help-text">Scroll: Zoom in/out</span>
+                    </div>
+                    <div class="help-item">
+                        <span class="help-icon">👆</span>
+                        <span class="help-text">Botão direito: Mover câmera</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="src/js/animation-system.js"></script>
+    <script type="module" src="src/js/app.js"></script>
+</body>
+</html>

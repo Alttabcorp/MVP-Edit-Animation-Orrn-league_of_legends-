@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ornn Animation Studio Pro</title>
+    <link rel="stylesheet" href="src/css/styles-pro.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Three.js Import Map -->
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div class="editor-layout">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">🔥 ORNN STUDIO</div>
+                <div class="project-name">Animation Editor</div>
+            </div>
+            <div class="header-right">
+                <button class="btn-header" id="btnUndo" data-tooltip="Desfazer (Ctrl+Z)">↶</button>
+                <button class="btn-header" id="btnRedo" data-tooltip="Refazer (Ctrl+Y)">↷</button>
+                <button class="btn-header" id="btnSaveSequence" data-tooltip="Salvar Sequência">📋 Sequência</button>
+                <button class="btn-header" id="btnSave" data-tooltip="Salvar Projeto (Ctrl+S)">💾 Salvar</button>
+                <button class="btn-header primary" id="btnExport" data-tooltip="Exportar Vídeo">⬇ Exportar</button>
+            </div>
+        </header>
+
+        <!-- Sidebar - Animation Library -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>📚 Biblioteca de Animações</h3>
+            </div>
+            <div class="animation-list" id="animationLibrary">
+                <!-- Animações serão carregadas dinamicamente -->
+                <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                    <div style="font-size: 32px; margin-bottom: 12px;">⏳</div>
+                    <div>Carregando animações...</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Viewport 3D -->
+        <main class="viewport-container">
+            <div id="viewport3D" class="viewport"></div>
+            
+            <div class="viewport-toolbar">
+                <button class="viewport-btn" id="btnResetCamera" data-tooltip="Resetar Câmera">🎥</button>
+                <button class="viewport-btn" id="btnWireframe" data-tooltip="Wireframe">🔲</button>
+                <button class="viewport-btn active" id="btnGrid" data-tooltip="Grade">📐</button>
+                <button class="viewport-btn" id="btnFullscreen" data-tooltip="Tela Cheia">⛶</button>
+            </div>
+
+            <div class="viewport-stats">
+                <div class="stat-row">
+                    <span class="stat-label">FPS:</span>
+                    <span class="stat-value" id="fpsValue">60</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Animation:</span>
+                    <span class="stat-value" id="currentAnimValue">Idle</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Time:</span>
+                    <span class="stat-value" id="timeValue">0.00s</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Control Panel -->
+        <aside class="control-panel">
+            <!-- Transition Controls -->
+            <div class="panel-section">
+                <h3>🔀 Controle de Transição</h3>
+                
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Duração da Transição</span>
+                        <span class="control-value" id="transitionValue">0.50s</span>
+                    </div>
+                    <input type="range" class="slider" id="transitionSlider" 
+                           min="0" max="2" step="0.05" value="0.5">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Suavização (Easing)</span>
+                        <span class="control-value" id="easingValue">Linear</span>
+                    </div>
+                    <select id="easingSelect" style="width: 100%; padding: 8px; background: var(--timeline-track); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px;">
+                        <option value="linear">Linear</option>
+                        <option value="ease-in">Ease In</option>
+                        <option value="ease-out">Ease Out</option>
+                        <option value="ease-in-out">Ease In-Out</option>
+                        <option value="smooth">Smooth</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Modo de Blend</span>
+                        <span class="control-value" id="blendValue">Crossfade</span>
+                    </div>
+                    <select id="blendSelect" style="width: 100%; padding: 8px; background: var(--timeline-track); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px;">
+                        <option value="crossfade">Crossfade</option>
+                        <option value="additive">Aditivo</option>
+                        <option value="override">Override</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Playback Controls -->
+            <div class="panel-section">
+                <h3>⏯️ Controle de Reprodução</h3>
+                
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Velocidade</span>
+                        <span class="control-value" id="speedValue">1.0x</span>
+                    </div>
+                    <input type="range" class="slider" id="speedSlider" 
+                           min="0.1" max="3" step="0.1" value="1.0">
+                </div>
+
+                <div class="control-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="loopCheck" checked>
+                        <label for="loopCheck">Loop de Animações</label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="autoPlayCheck" checked>
+                        <label for="autoPlayCheck">Auto-play ao Adicionar</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Camera Controls -->
+            <div class="panel-section">
+                <h3>📹 Controle de Câmera</h3>
+                
+                <div class="control-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="autoRotateCheck">
+                        <label for="autoRotateCheck">Rotação Automática</label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Velocidade de Rotação</span>
+                        <span class="control-value" id="rotateSpeedValue">2.0</span>
+                    </div>
+                    <input type="range" class="slider" id="rotateSpeedSlider" 
+                           min="0.5" max="5" step="0.5" value="2.0">
+                </div>
+
+                <div class="control-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="showGridCheck" checked>
+                        <label for="showGridCheck">Mostrar Grade</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Settings -->
+            <div class="panel-section">
+                <h3>⬇️ Configurações de Export</h3>
+                
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Resolução</span>
+                    </div>
+                    <select id="resolutionSelect" style="width: 100%; padding: 8px; background: var(--timeline-track); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px;">
+                        <option value="1920x1080">1920x1080 (Full HD)</option>
+                        <option value="1280x720">1280x720 (HD)</option>
+                        <option value="3840x2160">3840x2160 (4K)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>FPS</span>
+                    </div>
+                    <select id="exportFpsSelect" style="width: 100%; padding: 8px; background: var(--timeline-track); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px;">
+                        <option value="30">30 FPS</option>
+                        <option value="60" selected>60 FPS</option>
+                        <option value="120">120 FPS</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Visual Options -->
+            <div class="panel-section">
+                <h3>🎨 Opções Visuais</h3>
+                
+                <div class="control-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="shadowsCheck" checked>
+                        <label for="shadowsCheck">Sombras</label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="wireframeCheck">
+                        <label for="wireframeCheck">Wireframe</label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="skeletonCheck">
+                        <label for="skeletonCheck">Skeleton</label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Background Color</span>
+                    </div>
+                    <input type="color" id="bgColorPicker" value="#0f0f17" style="width: 100%; height: 36px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">
+                </div>
+            </div>
+
+            <!-- Model Parts -->
+            <div class="panel-section">
+                <h3>🎯 Model Parts</h3>
+                <div class="header-actions" style="margin-bottom: 10px; display: flex; gap: 5px;">
+                    <button id="showAllParts" class="btn-secondary" style="flex: 1; padding: 6px; font-size: 12px;">👁️ Mostrar Todas</button>
+                    <button id="hideAllParts" class="btn-secondary" style="flex: 1; padding: 6px; font-size: 12px;">🙈 Ocultar Todas</button>
+                </div>
+                <div id="modelPartsList" class="model-parts-list">
+                    <p style="color: #888; font-size: 13px; text-align: center; padding: 20px;">Carregando partes do modelo...</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Timeline -->
+        <section class="timeline-container">
+            <div class="timeline-header">
+                <div class="timeline-controls">
+                    <button class="timeline-btn" id="btnFirst" data-tooltip="Ir ao Início">⏮</button>
+                    <button class="timeline-btn play" id="btnPlayPause" data-tooltip="Play/Pause">▶</button>
+                    <button class="timeline-btn" id="btnLast" data-tooltip="Ir ao Fim">⏭</button>
+                    <button class="timeline-btn" id="btnStop" data-tooltip="Parar">⏹</button>
+                </div>
+                <div class="timeline-info">
+                    <span>Tempo: <strong id="timelineTime">00:00.000</strong></span>
+                    <span>Duração Total: <strong id="timelineDuration">00:00.000</strong></span>
+                    <span>Clips: <strong id="timelineClipCount">0</strong></span>
+                </div>
+                <div class="timeline-controls">
+                    <button class="timeline-btn" id="btnZoomIn" data-tooltip="Zoom In">🔍+</button>
+                    <button class="timeline-btn" id="btnZoomOut" data-tooltip="Zoom Out">🔍-</button>
+                    <button class="timeline-btn" id="btnClearTimeline" data-tooltip="Limpar Timeline">🗑</button>
+                </div>
+            </div>
+            <div class="timeline-tracks" id="timelineTracks">
+                <div class="track" id="track1">
+                    <div class="track-label">Track 1</div>
+                    <div class="track-content" id="trackContent1">
+                        <!-- Clips serão adicionados aqui dinamicamente -->
+                    </div>
+                </div>
+                <div class="track" id="track2">
+                    <div class="track-label">Track 2</div>
+                    <div class="track-content" id="trackContent2"></div>
+                </div>
+                <div class="track" id="track3">
+                    <div class="track-label">Track 3</div>
+                    <div class="track-content" id="trackContent3"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <p class="footer-made-by">
+                Forjado com carinho pela <a href="https://www.alttabcorp.com.br" target="_blank" rel="noopener noreferrer" class="footer-made-link">ALTTAB Corp</a>
+            </p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script type="module" src="src/js/animation-system.js"></script>
+    <script type="module" src="src/js/timeline-editor.js"></script>
+    <script type="module" src="src/js/app-pro.js"></script>
+</body>
+</html>

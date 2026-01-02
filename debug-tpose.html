@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug T-Pose - Ornn</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #0f0f17;
+            color: white;
+            display: flex;
+        }
+        #viewport {
+            flex: 1;
+            height: 100vh;
+        }
+        #panel {
+            width: 400px;
+            background: #1a1a24;
+            padding: 20px;
+            overflow-y: auto;
+            height: 100vh;
+        }
+        h1 {
+            color: #ff4655;
+            font-size: 20px;
+            margin-top: 0;
+        }
+        .anim-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #252534;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .anim-item:hover {
+            background: #353544;
+        }
+        .anim-item.active {
+            background: #ff4655;
+        }
+        .anim-name {
+            font-weight: bold;
+        }
+        .anim-details {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+        .highlight {
+            background: #00ff88 !important;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div id="viewport"></div>
+    <div id="panel">
+        <h1>🔍 Debug T-Pose Finder</h1>
+        <p>Clique em cada animação para testar. T-Pose é geralmente uma pose estática muito curta (&lt;0.1s).</p>
+        <div id="animationList"></div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, model, mixer, animations, clock, controls;
+        let currentAction = null;
+
+        async function init() {
+            const container = document.getElementById('viewport');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f0f17);
+            clock = new THREE.Clock();
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 1, 10000);
+            camera.position.set(-176, 84, -110);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+            
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 50, 0);
+            controls.minDistance = 80;
+            controls.maxDistance = 800;
+            
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+            directionalLight.position.set(5, 10, 5);
+            scene.add(directionalLight);
+            
+            // Grid
+            const gridHelper = new THREE.GridHelper(200, 20, 0xff6b35, 0x444444);
+            gridHelper.material.opacity = 0.2;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+            
+            // Load model
+            const loader = new GLTFLoader();
+            const gltf = await new Promise((resolve, reject) => {
+                loader.load('assets/models/ornn.glb', resolve, null, reject);
+            });
+            
+            model = gltf.scene;
+            model.rotation.y = (230 * Math.PI) / 180;
+            scene.add(model);
+            
+            // Animations
+            animations = gltf.animations;
+            mixer = new THREE.AnimationMixer(model);
+            
+            console.log('Total animations:', animations.length);
+            
+            // List animations
+            const list = document.getElementById('animationList');
+            animations.forEach((anim, index) => {
+                const item = document.createElement('div');
+                item.className = 'anim-item';
+                
+                const isPotentialTPose = anim.duration < 0.1;
+                const hasTPoseInName = anim.name.toLowerCase().includes('tpose') || 
+                                       anim.name.toLowerCase().includes('t_pose') ||
+                                       anim.name.toLowerCase().includes('t-pose');
+                
+                if (isPotentialTPose || hasTPoseInName) {
+                    item.classList.add('highlight');
+                }
+                
+                item.innerHTML = `
+                    <div class="anim-name">${anim.name}</div>
+                    <div class="anim-details">
+                        Index: ${index} | Duration: ${anim.duration.toFixed(3)}s
+                        ${isPotentialTPose ? ' | ⚠️ Muito curta (possível T-Pose)' : ''}
+                        ${hasTPoseInName ? ' | ✅ Nome contém T-Pose' : ''}
+                    </div>
+                `;
+                
+                item.addEventListener('click', () => {
+                    playAnimation(index);
+                    document.querySelectorAll('.anim-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                });
+                
+                list.appendChild(item);
+            });
+            
+            // Auto-find T-Pose
+            const tposeIndex = animations.findIndex(anim => 
+                anim.name.toLowerCase().includes('t_pose') ||
+                anim.name.toLowerCase().includes('tpose') ||
+                anim.name.toLowerCase() === 't-pose'
+            );
+            
+            if (tposeIndex !== -1) {
+                console.log('✅ T-Pose encontrado no índice:', tposeIndex);
+                console.log('Nome:', animations[tposeIndex].name);
+                console.log('Duração:', animations[tposeIndex].duration);
+            } else {
+                console.log('⚠️ T-Pose não encontrado por nome');
+                console.log('Animações muito curtas (< 0.1s):');
+                animations.forEach((anim, idx) => {
+                    if (anim.duration < 0.1) {
+                        console.log(`  [${idx}] ${anim.name} - ${anim.duration.toFixed(3)}s`);
+                    }
+                });
+            }
+            
+            animate();
+        }
+        
+        function playAnimation(index) {
+            if (currentAction) {
+                currentAction.stop();
+            }
+            
+            const action = mixer.clipAction(animations[index]);
+            action.reset();
+            action.setLoop(THREE.LoopOnce);
+            action.clampWhenFinished = true;
+            action.play();
+            
+            currentAction = action;
+            
+            console.log(`Playing: [${index}] ${animations[index].name} - ${animations[index].duration.toFixed(3)}s`);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+            if (controls) controls.update();
+            
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('viewport');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+        
+        init();
+    </script>
+</body>
+</html>
