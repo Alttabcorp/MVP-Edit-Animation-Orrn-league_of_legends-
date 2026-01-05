@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Overlay - Ornn Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: hidden;
+        }
+        #viewport {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        canvas {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw;
+            max-height: 100vh;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="viewport"></div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        let scene, camera, renderer, model, mixer, animations, clock;
+        let currentAction = null;
+
+        async function init() {
+            const container = document.getElementById('viewport');
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = null; // Transparent background for OBS overlay
+            clock = new THREE.Clock();
+
+            // === AJUSTE DE CÂMERA E ZOOM ===
+            // width/height: tamanho do canvas OBS
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            // FOV: quanto maior, mais "zoom out"; quanto menor, mais "zoom in"
+            camera = new THREE.PerspectiveCamera(35, width / height, 1, 10000);
+            // Ajuste de posição da câmera (x, y, z):
+            // - Para aproximar, diminua o valor de z (ex: -600)
+            // - Para afastar, aumente o valor de z (ex: -900)
+            // - Para mover para cima/baixo, ajuste y
+            camera.position.set(0, 180, -500); // << APROXIME MAIS AQUI (z=-600)
+            // Ajuste de foco da câmera (lookAt): centraliza verticalmente
+            camera.lookAt(0, 120, 0);
+
+            // Renderer
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(width, height);
+            renderer.setClearColor(0x000000, 0); // Transparente
+            container.appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+            directionalLight.position.set(5, 10, 5);
+            scene.add(directionalLight);
+
+            // Load model
+            const loader = new GLTFLoader();
+            const gltf = await new Promise((resolve, reject) => {
+                loader.load('assets/models/ornn.glb', resolve, null, reject);
+            });
+
+            model = gltf.scene;
+            model.rotation.y = (-180 * Math.PI) / 180;
+            scene.add(model);
+
+            // Animations
+            animations = gltf.animations;
+            mixer = new THREE.AnimationMixer(model);
+
+            const animationNames = ["Idle2_Base","Taunt","Ornn_Idle1_look.anm"]; // << EDITE AQUI OS NOMES
+
+            // Filtra as animações disponíveis conforme a lista acima
+            const selectedAnimations = animationNames
+                .map(name => animations.find(anim => anim.name.toLowerCase() === name.toLowerCase()))
+                .filter(Boolean);
+
+            // Centralizar modelo
+            model.position.set(0, 0, 0);
+
+            // Reproduz automaticamente as animações da lista, em loop
+            let currentAnim = 0;
+            let isPlaying = false;
+            function playNextAnimation() {
+                if (selectedAnimations.length === 0) return;
+                if (currentAction) {
+                    currentAction.stop();
+                    mixer.uncacheAction(currentAction.getClip());
+                }
+                const action = mixer.clipAction(selectedAnimations[currentAnim]);
+                action.reset();
+                action.setLoop(THREE.LoopOnce);
+                action.clampWhenFinished = true;
+                action.play();
+                currentAction = action;
+                isPlaying = true;
+            }
+
+            // Listener único para evitar múltiplos disparos
+            mixer.addEventListener('finished', () => {
+                if (!isPlaying) return;
+                isPlaying = false;
+                if (selectedAnimations.length === 0) return;
+                currentAnim = (currentAnim + 1) % selectedAnimations.length;
+                setTimeout(() => playNextAnimation(), 50); // Pequeno delay para garantir troca limpa
+            });
+
+            playNextAnimation();
+            animate();
+        }
+
+        // Função antiga de playAnimation removida, agora o controle é automático pela lista
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+
+            renderer.render(scene, camera);
+        }
+
+        // Responsivo para OBS: centraliza o canvas
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        });
+
+        init();
+    </script>
+</body>
+</html>

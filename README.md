@@ -276,6 +276,29 @@ Ornn_edit/
 
 ---
 
+## OBS Studio Overlay
+
+Para usar as animações como overlay em transmissões ao vivo no OBS Studio:
+
+1. **Abra o arquivo `obs-overlay.html`** no seu navegador web
+2. **No OBS Studio**, adicione uma nova fonte "Navegador"
+3. **Configure a fonte**:
+   - URL: `file:///caminho/para/seu/projeto/obs-overlay.html`
+   - Largura: 400px
+   - Altura: 400px
+   - Fundo transparente: Habilitado
+4. **Posicione o overlay** na sua cena como desejado
+
+A página `obs-overlay.html` foi criada especificamente para OBS, com:
+- Fundo transparente para sobrepor sua transmissão
+- Animação automática (T-Pose ou pose estática)
+- Sem controles ou interface visível
+- Otimizada para performance em streaming
+
+**Nota**: Substitua `/caminho/para/seu/projeto/` pelo caminho absoluto do seu projeto no sistema de arquivos.
+
+---
+
 ## Status do Projeto
 
 **Versão**: 1.0 (MVP)  
