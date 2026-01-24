@@ -729,8 +729,25 @@ class OrnnStudioPro {
                         <div class="anim-name">${cleanName || 'Animação ' + index}</div>
                         <div class="anim-duration">${anim.duration.toFixed(2)}s • #${index}</div>
                     </div>
-                    <button class="anim-add" data-tooltip="Adicionar à Timeline">+</button>
+                    <button class="anim-add" data-tooltip="Click: Track 1 | Botão Direito: Escolher Track" title="Click esquerdo: adiciona no Track 1&#10;Botão direito: escolher track">+</button>
                 `;
+                
+                // Tornar item arrastável
+                item.draggable = true;
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.effectAllowed = 'copy';
+                    e.dataTransfer.setData('text/plain', JSON.stringify({
+                        index: index,
+                        name: cleanName,
+                        duration: anim.duration
+                    }));
+                    item.style.opacity = '0.5';
+                    console.log('🎬 Arrastando:', cleanName);
+                });
+                
+                item.addEventListener('dragend', (e) => {
+                    item.style.opacity = '1';
+                });
                 
                 // Click para preview (toggle play/pause)
                 let isPlaying = false;
@@ -770,15 +787,75 @@ class OrnnStudioPro {
                     }
                 });
                 
-                // Botão + para adicionar
+                // Botão + para adicionar - CLICK NORMAL adiciona no track1
                 const addBtn = item.querySelector('.anim-add');
                 addBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     if (this.timelineEditor) {
                         const animName = cleanName || `anim_${index}`;
                         this.timelineEditor.addClipByIndex(index, animName, anim.duration, 'track1');
-                        console.log('➕ Adicionado à timeline:', animName);
+                        console.log('➕ Adicionado à timeline (Track 1):', animName);
                     }
+                });
+                
+                // BOTÃO DIREITO para escolher track
+                addBtn.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const menu = document.createElement('div');
+                    menu.style.cssText = `
+                        position: fixed;
+                        left: ${e.clientX}px;
+                        top: ${e.clientY}px;
+                        background: var(--bg-card);
+                        border: 1px solid var(--border);
+                        border-radius: 6px;
+                        padding: 4px;
+                        z-index: 10000;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+                    `;
+                    
+                    ['track1', 'track2', 'track3'].forEach(trackId => {
+                        const btn = document.createElement('button');
+                        btn.textContent = `Track ${trackId.slice(-1)}`;
+                        btn.style.cssText = `
+                            display: block;
+                            width: 100%;
+                            padding: 8px 16px;
+                            background: transparent;
+                            border: none;
+                            color: var(--text);
+                            cursor: pointer;
+                            text-align: left;
+                            border-radius: 4px;
+                            font-size: 13px;
+                        `;
+                        btn.onmouseover = () => btn.style.background = 'var(--bg-hover)';
+                        btn.onmouseout = () => btn.style.background = 'transparent';
+                        btn.onclick = () => {
+                            if (this.timelineEditor) {
+                                const animName = cleanName || `anim_${index}`;
+                                this.timelineEditor.addClipByIndex(index, animName, anim.duration, trackId);
+                                console.log(`➕ Adicionado à timeline (${trackId}):`, animName);
+                            }
+                            document.body.removeChild(menu);
+                        };
+                        menu.appendChild(btn);
+                    });
+                    
+                    document.body.appendChild(menu);
+                    
+                    // Fechar ao clicar fora
+                    setTimeout(() => {
+                        const closeMenu = (ev) => {
+                            if (!menu.contains(ev.target)) {
+                                document.body.removeChild(menu);
+                                document.removeEventListener('click', closeMenu);
+                            }
+                        };
+                        document.addEventListener('click', closeMenu);
+                    }, 10);
                 });
                 
                 animationList.appendChild(item);

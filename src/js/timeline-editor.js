@@ -20,14 +20,69 @@ export class TimelineEditor {
         
         this.animationSystem = null;
         this.setupEventListeners();
+        this.setupDragAndDrop();
         this.createTrimTooltip();
         this.createTimeRuler();
         this.createPlayhead();
+        this.showTrackHelp();
         
+    }
+    
+    showTrackHelp() {
+        // Mostrar ajuda visual nos tracks vazios
+        const tracks = document.querySelectorAll('.track');
+        tracks.forEach((track, index) => {
+            if (!track.querySelector('.clip')) {
+                const helpText = track.querySelector('.track-content');
+                if (helpText) {
+                    helpText.style.border = '2px dashed rgba(255, 255, 255, 0.2)';
+                }
+            }
+        });
     }
     
     setAnimationSystem(system) {
         this.animationSystem = system;
+    }
+    
+    setupDragAndDrop() {
+        // Configurar drop zones nos tracks
+        Object.keys(this.tracks).forEach(trackId => {
+            const track = document.getElementById(trackId);
+            if (!track) return;
+            
+            track.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+                track.classList.add('drag-over');
+            });
+            
+            track.addEventListener('dragleave', (e) => {
+                if (e.target === track) {
+                    track.classList.remove('drag-over');
+                }
+            });
+            
+            track.addEventListener('drop', (e) => {
+                e.preventDefault();
+                track.classList.remove('drag-over');
+                
+                try {
+                    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                    if (data && data.index !== undefined) {
+                        // Calcular posição do drop baseado no X
+                        const rect = this.tracks[trackId].getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const startTime = Math.max(0, x / (this.pixelsPerSecond * this.zoom));
+                        
+                        this.addClipByIndex(data.index, data.name, data.duration, trackId, startTime);
+                        console.log(`✅ Animação '${data.name}' adicionada no ${trackId} em ${startTime.toFixed(2)}s`);
+                    }
+                } catch (err) {
+                    console.error('Erro ao processar drop:', err);
+                }
+            });
+        });
     }
     
     setupEventListeners() {
@@ -592,6 +647,24 @@ export class TimelineEditor {
         if (durationEl) {
             durationEl.textContent = this.formatTime(this.duration);
         }
+        
+        // Atualizar contadores de clips por track
+        this.updateTrackCounts();
+    }
+    
+    updateTrackCounts() {
+        ['track1', 'track2', 'track3'].forEach((trackId, index) => {
+            const track = document.getElementById(trackId);
+            if (!track) return;
+            
+            const count = this.clips.filter(c => c.track === trackId).length;
+            const label = track.querySelector('.track-label');
+            if (label) {
+                const icon = ['🔴', '🔵', '🟢'][index];
+                const baseText = `${icon} Track ${index + 1}`;
+                label.textContent = count > 0 ? `${baseText} (${count})` : baseText;
+            }
+        });
     }
     
     updateClipCount() {
@@ -688,7 +761,7 @@ export class TimelineEditor {
     }
     
     playCurrentAnimation() {
-        // Encontrar clip ativo no tempo atual
+        // Encontrar clip ativo no tempo atual EM QUALQUER TRACK
         const activeClip = this.clips.find(clip => 
             this.currentTime >= clip.startTime && 
             this.currentTime < clip.startTime + clip.duration
@@ -726,13 +799,14 @@ export class TimelineEditor {
                 }
             }
         } else if (!activeClip && this.lastPlayedClip) {
-            // Não há clip ativo, voltar para idle
-            this.animationSystem?.changeAnimation('idle');
+            // NÃO HÁ CLIP ATIVO - PARAR COMPLETAMENTE A ANIMAÇÃO
+            // Não tocar idle, apenas parar
+            this.animationSystem?.stopAnimation();
             this.lastPlayedClip = null;
             
             const animValue = document.getElementById('currentAnimValue');
             if (animValue) {
-                animValue.textContent = 'Idle';
+                animValue.textContent = 'Nenhuma';
             }
         }
     }

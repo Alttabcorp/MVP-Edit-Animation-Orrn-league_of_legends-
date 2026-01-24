@@ -272,23 +272,19 @@ class AnimationSystem {
             newAction.setLoop(this.THREE.LoopRepeat);
         }
         
-        // Fazer transição suave sem reset para evitar voltar à pose inicial
+        // CORTE DIRETO - Parar completamente a animação anterior
         if (this.currentAction && this.currentAction !== newAction) {
-            // Reduzir peso gradualmente em vez de apenas fadeOut
-            this.currentAction.fadeOut(this.transitionDuration);
-            this.currentAction.enabled = true; // Manter habilitada durante transição
+            this.currentAction.stop();
+            this.currentAction.enabled = false;
         }
         
-        // Apenas resetar se a ação não estiver rodando ou se for forçado
-        if (!newAction.isRunning() || startTime > 0) {
-            newAction.reset();
-        }
+        // Sempre resetar para começar do início (ou do startTime)
+        newAction.reset();
         
         // Garantir que a nova ação está habilitada
         newAction.enabled = true;
         newAction.setEffectiveTimeScale(1);
         newAction.setEffectiveWeight(1);
-        newAction.fadeIn(this.transitionDuration);
         newAction.timeScale = this.animationSpeed;
         
         // Definir tempo inicial se especificado (para trim)
@@ -296,6 +292,7 @@ class AnimationSystem {
             newAction.time = startTime;
         }
         
+        // Iniciar imediatamente sem fade
         newAction.play();
         
         this.currentAction = newAction;
@@ -355,29 +352,19 @@ class AnimationSystem {
         
         const newAction = this.mixer.clipAction(this.animations[index]);
         
-        // Parar completamente a animação anterior se forceStop for true
-        if (forceStop && this.currentAction) {
-            this.currentAction.stop();
-            this.currentAction = null;
-        }
-        
-        // Fazer transição suave - NÃO chamar stop(), apenas fadeOut
+        // CORTE DIRETO - Parar completamente a animação anterior
         if (this.currentAction && this.currentAction !== newAction) {
-            this.currentAction.fadeOut(this.transitionDuration);
-            this.currentAction.enabled = true; // Manter habilitada durante transição
-            // Remover stop() para evitar voltar ao T-pose durante transição
+            this.currentAction.stop();
+            this.currentAction.enabled = false;
         }
         
-        // Apenas resetar se a ação não estiver rodando ou se for forçado
-        if (!newAction.isRunning() || startTime > 0) {
-            newAction.reset();
-        }
+        // Sempre resetar para começar do início (ou do startTime)
+        newAction.reset();
         
         newAction.setLoop(this.THREE.LoopRepeat);
         newAction.enabled = true;
         newAction.setEffectiveTimeScale(1);
         newAction.setEffectiveWeight(1);
-        newAction.fadeIn(this.transitionDuration);
         newAction.timeScale = this.animationSpeed;
         
         // Definir tempo inicial se especificado (para trim)
@@ -385,6 +372,7 @@ class AnimationSystem {
             newAction.time = startTime;
         }
         
+        // Iniciar imediatamente sem fade
         newAction.play();
         
         this.currentAction = newAction;
