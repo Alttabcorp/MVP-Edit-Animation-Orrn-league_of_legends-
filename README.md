@@ -326,4 +326,4 @@ Perfeito? Não. Funcional? Absolutamente. Útil para streamers e criadores de co
 
 ---
 
-**Alttabcorp** © 2025
+[**Alttabcorp**](https://www.alttabcorp.com.br/) © 2025
